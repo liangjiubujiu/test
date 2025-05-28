@@ -15,35 +15,60 @@
 - [实验分析](#实验分析)
 - [代码结构说明](#代码结构说明)
 - [贡献指南](#贡献指南)
-- [联系我们](#联系我们)
+
 
 ## 数据准备
 1. **下载数据集**：从STS-3D 挑战赛下载ctooth数据集，包含原始CBCT图像及对应标注。
 2. **数据预处理**：
-    - 使用`data_preprocess.py`进行数据预处理，包括图像归一化、裁剪、重采样等操作，将数据处理为模型可接受的格式。
-    - 执行命令：`python data_preprocess.py --input_dir [原始数据目录] --output_dir [处理后数据目录]`
+    - 在`train_cbct.py`使用`medical_loaders.generate_datasets()`进行数据预处理，核心功能模块包含：
+```
+DICOM 图像预处理
+-将 DICOM 格式图像转换为 JPG/PNG 格式
+-调整图像窗口（Windowing）以增强对比度
+-图像归一化处理（标准化、最大值归一化等）
+掩码处理
+-填充掩码中的空洞（FillHole 函数）
+-二值化处理和阈值操作
+数据增强
+-添加高斯噪声（noise 函数）
+-支持自定义噪声均值和标准差
+3D 体数据生成
+-将 2D 切片组合成 3D 体积数据
+-支持自定义体积大小和重叠率
+数据分块
+-将大体积数据分割成小的训练样本
+-支持训练集和验证集的不同重叠策略
+数据保存
+-将处理后的数据保存为 NPY 格式
+-生成训练样本列表
+```
+
 
 ## 环境搭建
 1. **安装依赖**：
-    - 确保已安装Python 3.7及以上版本。
-    - 使用`pip install -r requirements.txt`安装项目所需的Python依赖库，主要包括PyTorch、NumPy、OpenCV等。
-2. **配置GPU环境**（可选）：如果使用GPU进行训练和测试，请确保已正确安装CUDA和cuDNN，并在代码中正确配置相关参数。
+    - 确保已安装Python 3.8及以上版本。
+    - 安装项目所需的Python依赖库，主要包括PyTorch、NumPy、OpenCV等。
+2. **配置GPU环境**（可选）：如果使用GPU进行训练和测试，请确保已正确安装CUDA和cuDNN，并在代码中根据本机显卡情况正确配置相关参数，如`os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"`表示指定两张卡。
 
 ## 模型训练
-1. **训练参数配置**：在`train_config.py`文件中配置训练参数，包括训练批次大小、学习率、训练轮数、使用的注意力模块等。
+1. **训练参数配置**：在`train_cbct.py`文件中的`get_arguments()`参数列表中配置训练参数，包括训练批次大小、学习率、训练轮数、3D patch大小等。
 2. **开始训练**：
-    - 执行命令：`python train.py --config train_config.py`
-    - 训练过程中，模型训练日志将保存在`logs`目录下，训练过程中的模型权重会定期保存到`checkpoints`目录。
+    - 执行命令：`python train_cbct.py`
+
 
 ## 模型测试
-1. **测试参数配置**：在`test_config.py`文件中配置测试参数，指定测试数据路径、加载的模型权重路径等。
-2. **开始测试**：
-    - 执行命令：`python test.py --config test_config.py`
-    - 测试完成后，分割结果将保存在`results`目录下，同时会生成相关的性能评估指标报告。
+1. **测试参数配置**：在`train_cbct.py`文件中，确保下方的代码没有被注释
+```
+    print("START ANALYSE...")
+    trainer.testing()
+```
+3. **开始测试**：
+    - 执行命令：`python train_cbct.py`
+    - 测试完成后，分割结果将保存在模型同名文件夹下，同时会生成相关的性能评估指标excel。
 
 ## 实验分析
 1. **性能指标计算**：
-常用的计算分割性能的指标是xxx，计算方法如下
+常用的计算分割性能的指标是IOU、sensitivity、ppv，计算方法如下
 ```
 def iou_score(output, target):
     smooth = 1e-5
@@ -130,14 +155,18 @@ def sd(mask_pred, mask_gt):
 
 
 2. **对比实验设置**
-   本框架除论文中给出的对比模型，还支持扩展模型。具体配置方法：首先需要在主函数的参数列表中指定需要训练的对照模型。
-
-   例如'TransBTS'，然后在medzoo/__init__.py中的model_list中添加'TransBTS',在下方的create_model(args)函数中增加对新模型的定义
+   本框架除论文中给出的对比模型，还支持扩展模型。具体配置方法：首先需要在主函数的参数列表'--model'中指定需要训练的对照模型，例如'TransBTS'，然后在medzoo/__init__.py中的model_list中添加'TransBTS',在下方的create_model(args)函数中增加对新模型的定义
    ```
     elif model_name=='TransBTS':
         _, model = TransBTS(args,dataset='brats', _conv_repr=True, _pe_type="learned")
    ```
 最后将官方复现或者其他方式开源的模型架构TransBTS.py放到medzoo文件夹中。
+
+3. **后处理**
+虽然本项目报告中没有单独说明后处理的步骤，但是从实验中发现，分块的大小、重复率影响了后续块按照顺序拼接复原回3D完整结构的性能。其中有几个值得注意的超参数，以下说明。
+
+
+
 ## 代码结构说明(本项目代码在开源框架medzoo基础上进行开发)
 ```
 ctooth_segmentation/
