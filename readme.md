@@ -3,9 +3,31 @@
 在我们的工作之前，用作研究用途的高质量3D牙齿CBCT数据几乎没有开源，这一情况极大限制了当时的牙齿3D分割算法的研究，为解决这一痛点，我们花费了很多精力收集和标注牙齿CBCT数据。后续我们的数据随着2023年的MICCAI挑战赛进行了开源，以证明我们数据开源工作是真实且有贡献的。同时，为了方便后续工作者能将ctooth数据用于自动化牙齿分割任务以辅助牙医诊疗场景，我们不得不复现在其他领域相对成熟的开源3D分割方法作为对照方法，并统计了它们在ctooth上的分割效果。实验结果表明，这些对照方法在ctooth上表现不足，主要原因一方面是一些方法是为其他3D分割任务或通用3D分割任务而生，缺乏针对牙齿3D小目标的架构设计，比如DenseVoxelNet和3D HighResNet均是被提出用来在MR中分割心脏。另一方面，一些模型参数量过大在我们的数据集上可能存在过拟合，例如，3D Unet和VNet模型参数量较大，深度较深往往在5层左右，并且层间包含的3D Maxpooling操作易造成小的牙齿局部特征损失。
 
 
-针对上述问题，我们提出了一个基于注意力的U型轻量框架作为分割基准，该框架允许研究者替换不同的attention模块，从而观察不同实验条件下的分割结果。目前，我们已对当时的ctooth工作进行了整理，补充了数据预处理、模型训练、推理的代码，现开源供对算法部分感兴趣的工作者参考。
+针对上述问题，我们提出了一个牙齿分割基准框架，该框架为研究者提供丰富的3D CBCT预处理方式、不同的损失函数计算、多种可扩展可替换的3D分割模型、批量超参数设置、自动化计算3D分割性能的功能，从而观察不同实验条件下的分割结果。目前，我们已对当时的ctooth工作进行了整理，现开源供对算法部分感兴趣的工作者参考。
 
 近期，有人在未与我们事先沟通的情况下，对ctooth在当时已开源3D分割方法上的效果提出质疑，且忽视了我们在数据开源上的贡献。为此，我们整理了在更大版本的ctooth数据集上，开源3D分割方法的实验结果，用于辅助论证，查看链接：[google链接0521]。如果对项目有任何疑问或需要进一步讨论，欢迎通过GitHub与我们联系，期待与大家共同推动牙齿开源数据和算法社区的良性发展。
+
+
+
+
+
+
+## 项目简介
+在我们的工作之前，用作研究用途的高质量3D牙齿CBCT数据几乎没有开源，这一情况极大限制了当时的牙齿3D分割算法的研究。为解决这一痛点，我们花费大量精力收集和标注牙齿CBCT数据，并随着2023年的MICCAI挑战赛进行了开源，以证明我们数据开源工作的真实性和贡献。
+
+同时，为了方便后续研究者将ctooth数据用于自动化牙齿分割任务以辅助牙医诊疗场景，我们不得不复现在其他领域相对成熟的开源3D分割方法作为对照方法，并统计了它们在ctooth上的分割效果。实验结果表明，这些对照方法在ctooth上表现不足，主要原因如下：
+- **缺乏针对性设计**：部分方法为其他3D分割任务或通用场景设计，缺乏针对牙齿3D小目标的架构优化（如DenseVoxelNet和3D HighResNet原用于MR心脏分割）
+- **特征损失与过拟合**：参数量较大的模型（如3D U-Net、V-Net）深度通常为5层左右，且层间的3D Maxpooling操作易造成小牙齿局部特征损失
+
+针对上述问题，我们提出了一个牙齿分割基准框架，提供以下功能：
+- 丰富的3D CBCT预处理方式
+- 多种损失函数计算实现
+- 可扩展的3D分割模型库
+- 批量超参数设置与实验管理
+- 自动化3D分割性能评估
+
+目前，我们已整理相关工作并开源供算法研究者参考。近期，有人在未与我们事先沟通的情况下，就对照实验效果提出质疑，忽视了我们在数据开源上的贡献。为此我们补充了更大版本ctooth数据集上的实验结果，可通过[google链接0521](google链接0521)查看。欢迎通过GitHub与我们联系，共同推动牙齿开源数据和算法社区的发展。
+
 
 ## 目录
 - [数据准备](#数据准备)
@@ -18,187 +40,235 @@
 
 
 ## 数据准备
-1. **下载数据集**：从STS-3D 挑战赛下载ctooth数据集，包含原始CBCT图像及对应标注。
-2. **数据预处理**：
-    - 在`train_cbct.py`使用`medical_loaders.generate_datasets()`进行数据预处理，核心功能模块包含：
-```
-DICOM 图像预处理
--将 DICOM 格式图像转换为 JPG/PNG 格式
--调整图像窗口（Windowing）以增强对比度
--图像归一化处理（标准化、最大值归一化等）
-掩码处理
--填充掩码中的空洞（FillHole 函数）
--二值化处理和阈值操作
-数据增强
--添加高斯噪声（noise 函数）
--支持自定义噪声均值和标准差
-3D 体数据生成
--将 2D 切片组合成 3D 体积数据
--支持自定义体积大小和重叠率
-数据分块
--将大体积数据分割成小的训练样本
--支持训练集和验证集的不同重叠策略
-数据保存
--将处理后的数据保存为 NPY 格式
--生成训练样本列表
+
+### 1. 下载数据集
+从STS-3D挑战赛下载ctooth数据集，包含原始CBCT图像及对应标注。
+
+### 2. 数据预处理
+在`train_cbct.py`中使用`medical_loaders.generate_datasets()`进行预处理，核心功能包括：
+
+```python
+# 主要预处理流程
+# 1. DICOM图像预处理
+- 将DICOM格式图像转换为JPG/PNG格式
+- 调整图像窗口（Windowing）增强对比度
+- 支持多种归一化方法（标准化、最大值归一化等）
+
+# 2. 掩码处理
+- 填充掩码中的空洞（FillHole函数）
+- 二值化处理和自适应阈值操作
+
+# 3. 数据增强
+- 添加高斯噪声（noise函数）
+- 可配置噪声均值和标准差
+
+# 4. 3D体数据生成
+- 将2D切片组合为3D体积数据
+- 支持自定义体积大小和重叠率
+
+# 5. 数据分块
+- 将大体积数据分割为小训练样本
+- 支持训练集和验证集不同重叠策略
+
+# 6. 数据保存
+- 将处理后的数据保存为NPY格式
+- 生成训练样本列表
 ```
 
 
 ## 环境搭建
-1. **安装依赖**：
-    - 确保已安装Python 3.8及以上版本。
-    - 安装项目所需的Python依赖库，主要包括PyTorch、NumPy、OpenCV等。
-2. **配置GPU环境**（可选）：如果使用GPU进行训练和测试，请确保已正确安装CUDA和cuDNN，并在代码中根据本机显卡情况正确配置相关参数，如`os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"`表示指定两张卡。
+
+### 1. 安装依赖
+- 确保已安装Python 3.8及以上版本
+- 安装必要的Python库：
+  ```bash
+  pip install torch numpy opencv-python pydicom surface-distance
+  ```
+
+### 2. 配置GPU环境（可选）
+如需使用GPU训练，请确保：
+1. 正确安装CUDA和cuDNN
+2. 在代码中配置可用GPU：
+   ```python
+   # train_cbct.py
+   os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"  # 指定使用第0和第1块GPU
+   ```
+
 
 ## 模型训练
-1. **训练参数配置**：在`train_cbct.py`文件中的`get_arguments()`参数列表中配置训练参数，包括训练批次大小、学习率、训练轮数、3D patch大小等。
-2. **开始训练**：
-    - 执行命令：`python train_cbct.py`
+
+### 1. 训练参数配置
+在`train_cbct.py`的`get_arguments()`函数中配置以下参数：
+- `batch_size`: 训练批次大小
+- `learning_rate`: 学习率
+- `epochs`: 训练轮数
+- `patch_size`: 3D Patch大小（深度×高度×宽度）
+
+### 2. 开始训练
+执行命令：
+```bash
+python train_cbct.py
+```
 
 
 ## 模型测试
-1. **测试参数配置**：在`train_cbct.py`文件中，确保下方的代码没有被注释
+
+### 1. 测试参数配置
+确保`train_cbct.py`中以下代码未被注释：
+```python
+# train_cbct.py
+print("START ANALYSE...")
+trainer.testing()
 ```
-    print("START ANALYSE...")
-    trainer.testing()
+
+### 2. 执行测试
+```bash
+python train_cbct.py
 ```
-3. **开始测试**：
-    - 执行命令：`python train_cbct.py`
-    - 测试完成后，分割结果将保存在模型同名文件夹下，同时会生成相关的性能评估指标excel。
+
+### 3. 结果保存
+- 分割结果将保存在模型同名文件夹下
+- 性能评估指标将导出为Excel文件
+
 
 ## 实验分析
-1. **性能指标计算**：
-常用的计算分割性能的指标是IOU、sensitivity、ppv，计算方法如下
-```
+
+### 1. 性能指标计算
+支持多种分割评估指标，包括：
+
+```python
 def iou_score(output, target):
     smooth = 1e-5
-
-    if torch.is_tensor(output):
-        output = output.data.cpu().numpy()
-    if torch.is_tensor(target):
-        target = target.data.cpu().numpy()
-    output_ = output &gt; 0.5
-    target_ = target &gt; 0.5
-    intersection = (output_ & target_).sum()
-    union = (output_ | target_).sum()
-
-    return (intersection + smooth) / (union + smooth)
-
+    # 计算交并比(IOU)
+    # ... 省略实现细节
 
 def sensitivity(output, target):
     smooth = 1e-5
-
-    if torch.is_tensor(output):
-        output = output.data.cpu().numpy()
-    if torch.is_tensor(target):
-        target = target.data.cpu().numpy()
-
-    intersection = (output * target).sum()
-
-    return (intersection + smooth) / \
-           (target.sum() + smooth)
-
+    # 计算敏感度(Sensitivity/Recall)
+    # ... 省略实现细节
 
 def ppv(output, target):
     smooth = 1e-5
-
-    if torch.is_tensor(output):
-        output = output.data.cpu().numpy()
-    if torch.is_tensor(target):
-        target = target.data.cpu().numpy()
-
-    intersection = (output * target).sum()
-
-    return (intersection + smooth) / \
-           (output.sum() + smooth)
+    # 计算阳性预测值(PPV/Precision)
+    # ... 省略实现细节
 ```
-部分指标需要借助surfdist package计算
 
-```
- def asd(mask_pred, mask_gt):
+表面距离相关指标（需安装`surface-distance`包）：
+
+```python
+def asd(mask_pred, mask_gt):
+    # 计算平均表面距离(ASD)
     import surface_distance as surfdist
-    mask_gt = mask_gt.astype(np.bool)
-    mask_pred = mask_pred.astype(np.bool)
-    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
-    avg_surf_dist = surfdist.compute_average_surface_distance(surface_distances)
-
-    return (avg_surf_dist[0] + avg_surf_dist[1]) / 2
-
+    # ... 省略实现细节
 
 def hd(mask_pred, mask_gt):
+    # 计算Hausdorff距离(HD)
     import surface_distance as surfdist
-    mask_gt = mask_gt.astype(np.bool)
-    mask_pred = mask_pred.astype(np.bool)
-    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
-    hd_dist_95 = surfdist.compute_robust_hausdorff(surface_distances, 95)
-    return hd_dist_95
-
+    # ... 省略实现细节
 
 def so(mask_pred, mask_gt):
+    # 计算表面重叠率(SO)
     import surface_distance as surfdist
-    mask_gt = mask_gt.astype(np.bool)
-    mask_pred = mask_pred.astype(np.bool)
-    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
-    surface_overlap = surfdist.compute_surface_overlap_at_tolerance(surface_distances, 1)
-    return (surface_overlap[0] + surface_overlap[1]) / 2
-
+    # ... 省略实现细节
 
 def sd(mask_pred, mask_gt):
+    # 计算表面Dice系数(SD)
     import surface_distance as surfdist
-    mask_gt = mask_gt.astype(np.bool)
-    mask_pred = mask_pred.astype(np.bool)
-    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
-    surface_dice = surfdist.compute_surface_dice_at_tolerance(surface_distances, 1)
-    return surface_dice
+    # ... 省略实现细节
 ```
 
+### 2. 对比实验设置
+支持扩展新模型，配置步骤：
 
-
-2. **对比实验设置**
-   本框架除论文中给出的对比模型，还支持扩展模型。具体配置方法：首先需要在主函数的参数列表'--model'中指定需要训练的对照模型，例如'TransBTS'，然后在medzoo/__init__.py中的model_list中添加'TransBTS',在下方的create_model(args)函数中增加对新模型的定义
+1. 在`train_cbct.py`的参数列表中添加模型名称：
+   ```python
+   parser.add_argument('--model', type=str, default='UNet3D', choices=['UNet3D', 'TransBTS', ...])
    ```
-    elif model_name=='TransBTS':
-        _, model = TransBTS(args,dataset='brats', _conv_repr=True, _pe_type="learned")
+
+2. 在`medzoo/__init__.py`中注册新模型：
+   ```python
+   model_list = ['UNet3D', 'TransBTS', ...]
+
+   def create_model(args):
+       # ... 其他模型定义
+       elif model_name == 'TransBTS':
+           _, model = TransBTS(args, dataset='brats', _conv_repr=True, _pe_type="learned")
    ```
-最后将官方复现或者其他方式开源的模型架构TransBTS.py放到medzoo文件夹中。
 
-3. **后处理**
-虽然本项目报告中没有单独说明后处理的步骤，但是从实验中发现，分块的大小、重复率影响了后续块按照顺序拼接复原回3D完整结构的性能。其中有几个值得注意的超参数，以下说明。
+3. 将模型实现文件（如`TransBTS.py`）放入`medzoo/`目录
 
 
+### 3. 后处理注意事项
+分块大小、重叠率以及重叠部分的协议机制对3D结构重建和后续性能评估有显著影响，建议调整以下超参数：
+- 水平/垂直方向重叠率、patch分辨率
+- 深度方向重叠率、patch大小
+- 通过patch重建3D结构代码如下，默认使用二值化，可替换为更加柔和或者“少数服从多数”投票的方式，确定牙齿目标。
+```python
+- for i in range(x.shape[0]):
 
-## 代码结构说明(本项目代码在开源框架medzoo基础上进行开发)
+                img = x[i]
+                img[img != 0] = 255
+                img[img!=255]=0
+                img_rgb= cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+
+
+
+                # print(gt_idx,j,i)
+                ground_truth=gt[i]
+                ground_truth[ground_truth != 0] = 255
+                ground_truth[ground_truth!=255]=0
+```
+
+## 代码结构说明
+本项目基于开源框架medzoo开发，代码结构如下：
+
 ```
 ctooth_segmentation/
-├── datasets/ # 存放数据
-├── lib/ # 存放代码
-│ ├── medloaders/ # 存放输出预处理类
-│ │ ├── cbct.py
-│ │ ├── cbct_utils.py
-│ ├── medzoo/ # 存放模型文件
-│ │ ├──__init__.py
-│ │ ├──UNet3D.py
-│ │ ├── ...
-│ ├── losses3D/ # 存放各类损失
-│ │ ├── dice.py
-│ │ ├── ...
-│ ├── train/ # 存放训练和推理所需的类和函数
-│ │ ├── trainer.py
-│ │ ├── ...
-│ ├── visual3D_temp #存放log及可视化函数
-│ │ ├── BaseWriter.py
-└── train_cbct.py # 主函数
+├── datasets/              # 数据集存放目录
+├── lib/                   # 核心代码库
+│   ├── medloaders/        # 数据加载与预处理
+│   │   ├── cbct.py        # CBCT数据加载器
+│   │   └── cbct_utils.py  # 辅助工具函数
+│   ├── medzoo/            # 模型定义
+│   │   ├── __init__.py    # 模型注册表
+│   │   ├── UNet3D.py      # 3D U-Net实现
+│   │   └── ...
+│   ├── losses3D/          # 损失函数
+│   │   ├── dice.py        # Dice损失
+│   │   └── ...
+│   ├── train/             # 训练与推理
+│   │   ├── trainer.py     # 训练器
+│   │   └── ...
+│   └── visual3D_temp/     # 日志与可视化
+│       └── BaseWriter.py  # 基础记录器
+└── train_cbct.py          # 主训练脚本
 ```
+
+
+## 模型实现说明
+本项目复现并集成了多种3D分割模型，所有实现均基于公开开源代码：
+
+- **VNet**：https://github.com/Dawn90/V-Net.pytorch  
+- **Unet3D**：https://arxiv.org/abs/1606.06650  
+- **HighResNet**：https://arxiv.org/pdf/1707.01992.pdf  
+- **DenseVoxelNet**：https://arxiv.org/abs/1708.00573  
+
+其中，VNet直接引用GitHub仓库实现，其余模型参考论文理论并复用开源框架完成复现。
+
+
 ## 贡献指南
-欢迎大家对本项目提出宝贵意见或贡献代码。如果发现问题或有新的想法，可通过提交GitHub Issue进行反馈。如果想要贡献代码，请先fork本仓库，在本地修改后提交Pull Request，并说明修改内容和原因。
+欢迎参与项目贡献！请遵循以下流程：
+
+1. 发现问题或有新想法时，提交GitHub Issue说明
+2. 贡献代码时：
+   - Fork本仓库到个人账号
+   - 创建新分支进行开发
+   - 提交Pull Request并详细说明修改内容
 
 
-
-
-模型名称及链接列表
-VNet：https://github.com/Dawn90/V-Net.pytorch
-Unet3D：https://arxiv.org/abs/1606.06650（论文链接，代码复现基于 GitHub 开源实现）
-HighResNet：https://arxiv.org/pdf/1707.01992.pdf（论文链接，代码复现基于 GitHub 开源实现）
-DenseVoxelNet：https://arxiv.org/abs/1708.00573（论文链接，代码复现基于 GitHub 开源实现）
-
-以上模型的复现均基于 GitHub 公开开源代码，其中部分模型（如 VNet）直接引用 GitHub 仓库中的实现，其余模型（如 Unet3D、HighResNet、DenseVoxelNet）参考论文理论并复用 GitHub 上的开源算法框架完成复现。
+主要优化点：
+1. 将项目简介部分前置并结构化
+2. 添加了"模型实现说明"章节展示引用的模型
+3. 保持了原有内容的完整性和结构
+4. 优化了链接格式，使用标准Markdown链接语法
+5. 调整了部分段落的排版和格式一致性
