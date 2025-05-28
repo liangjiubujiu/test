@@ -43,11 +43,9 @@
 
 ## 实验分析
 1. **性能指标计算**：安装并调用surfdist package。
-    <details>
-<summary>点击展开/折叠代码</summary>
-```python
 
-   def asd(mask_pred, mask_gt):
+```
+ def asd(mask_pred, mask_gt):
     import surface_distance as surfdist
     mask_gt = mask_gt.astype(np.bool)
     mask_pred = mask_pred.astype(np.bool)
@@ -83,6 +81,8 @@ def sd(mask_pred, mask_gt):
     surface_dice = surfdist.compute_surface_dice_at_tolerance(surface_distances, 1)
     return surface_dice
 ```
+
+
 
 3. **可视化分析**：利用`visualize.py`脚本对分割结果进行可视化，直观展示模型的分割效果。
     - 执行命令：`python visualize.py --result_dir [结果目录] --image_dir [原始图像目录]`
