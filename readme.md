@@ -42,7 +42,52 @@
     - 测试完成后，分割结果将保存在`results`目录下，同时会生成相关的性能评估指标报告。
 
 ## 实验分析
-1. **性能指标计算**：安装并调用surfdist package。
+1. **性能指标计算**：
+常用的计算分割性能的指标是xxx，计算方法如下
+```
+def iou_score(output, target):
+    smooth = 1e-5
+
+    if torch.is_tensor(output):
+        output = output.data.cpu().numpy()
+    if torch.is_tensor(target):
+        target = target.data.cpu().numpy()
+    output_ = output &gt; 0.5
+    target_ = target &gt; 0.5
+    intersection = (output_ & target_).sum()
+    union = (output_ | target_).sum()
+
+    return (intersection + smooth) / (union + smooth)
+
+
+def sensitivity(output, target):
+    smooth = 1e-5
+
+    if torch.is_tensor(output):
+        output = output.data.cpu().numpy()
+    if torch.is_tensor(target):
+        target = target.data.cpu().numpy()
+
+    intersection = (output * target).sum()
+
+    return (intersection + smooth) / \
+           (target.sum() + smooth)
+
+
+def ppv(output, target):
+    smooth = 1e-5
+
+    if torch.is_tensor(output):
+        output = output.data.cpu().numpy()
+    if torch.is_tensor(target):
+        target = target.data.cpu().numpy()
+
+    intersection = (output * target).sum()
+
+    return (intersection + smooth) / \
+           (output.sum() + smooth)
+```
+部分指标需要借助surfdist package计算
 
 ```
  def asd(mask_pred, mask_gt):
@@ -84,11 +129,17 @@ def sd(mask_pred, mask_gt):
 
 
 
-3. **可视化分析**：利用`visualize.py`脚本对分割结果进行可视化，直观展示模型的分割效果。
-    - 执行命令：`python visualize.py --result_dir [结果目录] --image_dir [原始图像目录]`
-4. **对比实验**：在`comparison_experiments.py`中复现了当时业界几个开源的3D分割方法，并进行对比实验，可通过修改配置文件运行不同的对比实验。
+2. **对比实验设置**
+   本框架除论文中给出的对比模型，还支持扩展模型。具体配置方法：首先需要在主函数的参数列表中指定需要训练的对照模型。
 
+   例如'TransBTS'，然后在medzoo/__init__.py中的model_list中添加'TransBTS',在下方的create_model(args)函数中增加对新模型的定义
+   ```
+    elif model_name=='TransBTS':
+        _, model = TransBTS(args,dataset='brats', _conv_repr=True, _pe_type="learned")
+   ```
+最后将官方复现或者其他方式开源的模型架构TransBTS.py放到medzoo文件夹中。
 ## 代码结构说明(本项目代码在开源框架medzoo基础上进行开发)
+```
 ctooth_segmentation/
 ├── datasets/ # 存放数据
 ├── lib/ # 存放代码
@@ -96,6 +147,7 @@ ctooth_segmentation/
 │ │ ├── cbct.py
 │ │ ├── cbct_utils.py
 │ ├── medzoo/ # 存放模型文件
+│ │ ├──__init__.py
 │ │ ├──UNet3D.py
 │ │ ├── ...
 │ ├── losses3D/ # 存放各类损失
@@ -107,12 +159,10 @@ ctooth_segmentation/
 │ ├── visual3D_temp #存放log及可视化函数
 │ │ ├── BaseWriter.py
 └── train_cbct.py # 主函数
-
+```
 ## 贡献指南
-欢迎大家对本项目提出宝贵意见或贡献代码。如果发现问题或有新的想法，可通过提交GitHub Issue进行反馈。如果想要贡献代码，请先fork本仓库，在本地修改后提交Pull Request，并详细说明修改内容和原因。
+欢迎大家对本项目提出宝贵意见或贡献代码。如果发现问题或有新的想法，可通过提交GitHub Issue进行反馈。如果想要贡献代码，请先fork本仓库，在本地修改后提交Pull Request，并说明修改内容和原因。
 
-## 联系我们
-如果你对项目有任何疑问、建议或合作意向，欢迎通过GitHub的Issue或私信与我们联系。
 
 
 
