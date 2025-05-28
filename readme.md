@@ -43,7 +43,10 @@
 
 ## 实验分析
 1. **性能指标计算**：安装并调用surfdist package。
-    '''
+    <details>
+<summary>点击展开/折叠代码</summary>
+```python
+
    def asd(mask_pred, mask_gt):
     import surface_distance as surfdist
     mask_gt = mask_gt.astype(np.bool)
@@ -79,7 +82,8 @@ def sd(mask_pred, mask_gt):
     surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
     surface_dice = surfdist.compute_surface_dice_at_tolerance(surface_distances, 1)
     return surface_dice
-   '''
+```
+
 3. **可视化分析**：利用`visualize.py`脚本对分割结果进行可视化，直观展示模型的分割效果。
     - 执行命令：`python visualize.py --result_dir [结果目录] --image_dir [原始图像目录]`
 4. **对比实验**：在`comparison_experiments.py`中复现了当时业界几个开源的3D分割方法，并进行对比实验，可通过修改配置文件运行不同的对比实验。
