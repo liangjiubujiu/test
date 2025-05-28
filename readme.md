@@ -125,38 +125,87 @@ python train_cbct.py
 
 ```python
 def iou_score(output, target):
+# 计算交并比(IOU)
     smooth = 1e-5
-    # 计算交并比(IOU)
-    # ... 省略实现细节
+    if torch.is_tensor(output):
+        output = output.data.cpu().numpy()
+    if torch.is_tensor(target):
+        target = target.data.cpu().numpy()
+    output_ = output &gt; 0.5
+    target_ = target &gt; 0.5
+    intersection = (output_ & target_).sum()
+    union = (output_ | target_).sum()
+    return (intersection + smooth) / (union + smooth)
+
 
 def sensitivity(output, target):
+# 计算敏感度(Sensitivity)
     smooth = 1e-5
-    # 计算敏感度(Sensitivity/Recall)
-    # ... 省略实现细节
+    if torch.is_tensor(output):
+        output = output.data.cpu().numpy()
+    if torch.is_tensor(target):
+        target = target.data.cpu().numpy()
+    intersection = (output * target).sum()
+    return (intersection + smooth) / \
+           (target.sum() + smooth)
+
 
 def ppv(output, target):
+# 计算阳性预测值(PPV)
     smooth = 1e-5
-    # 计算阳性预测值(PPV/Precision)
-    # ... 省略实现细节
+    if torch.is_tensor(output):
+        output = output.data.cpu().numpy()
+    if torch.is_tensor(target):
+        target = target.data.cpu().numpy()
+    intersection = (output * target).sum()
+    return (intersection + smooth) / \
+           (output.sum() + smooth)
 ```
 
 表面距离相关指标（需安装`surface-distance`包，下方的函数定义在`trainer`中）：
 
 ```python
-def asd(mask_pred, mask_gt):
-    # 计算平均表面距离(ASD)
-    
+
+ def asd(mask_pred, mask_gt):
+ # 计算平均表面距离(ASD)
+    import surface_distance as surfdist
+    mask_gt = mask_gt.astype(np.bool)
+    mask_pred = mask_pred.astype(np.bool)
+    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
+    avg_surf_dist = surfdist.compute_average_surface_distance(surface_distances)
+
+    return (avg_surf_dist[0] + avg_surf_dist[1]) / 2
+
 
 def hd(mask_pred, mask_gt):
-    # 计算Hausdorff距离(HD)
-   
+ # 计算Hausdorff距离(HD)
+
+    import surface_distance as surfdist
+    mask_gt = mask_gt.astype(np.bool)
+    mask_pred = mask_pred.astype(np.bool)
+    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
+    hd_dist_95 = surfdist.compute_robust_hausdorff(surface_distances, 95)
+    return hd_dist_95
+
 
 def so(mask_pred, mask_gt):
-    # 计算表面重叠率(SO)
-    
+# 计算表面重叠率(SO)
+    import surface_distance as surfdist
+    mask_gt = mask_gt.astype(np.bool)
+    mask_pred = mask_pred.astype(np.bool)
+    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
+    surface_overlap = surfdist.compute_surface_overlap_at_tolerance(surface_distances, 1)
+    return (surface_overlap[0] + surface_overlap[1]) / 2
+
 
 def sd(mask_pred, mask_gt):
-    # 计算表面Dice系数(SD)
+# 计算表面Dice系数(SD)
+    import surface_distance as surfdist
+    mask_gt = mask_gt.astype(np.bool)
+    mask_pred = mask_pred.astype(np.bool)
+    surface_distances = surfdist.compute_surface_distances(mask_gt, mask_pred, spacing_mm=(0.25, 0.25, 1))
+    surface_dice = surfdist.compute_surface_dice_at_tolerance(surface_distances, 1)
+    return surface_dice
     
 ```
 
