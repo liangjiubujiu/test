@@ -140,28 +140,24 @@ def ppv(output, target):
     # ... 省略实现细节
 ```
 
-表面距离相关指标（需安装`surface-distance`包）：
+表面距离相关指标（需安装`surface-distance`包，下方的函数定义在`trainer`中）：
 
 ```python
 def asd(mask_pred, mask_gt):
     # 计算平均表面距离(ASD)
-    import surface_distance as surfdist
-    # ... 省略实现细节
+    
 
 def hd(mask_pred, mask_gt):
     # 计算Hausdorff距离(HD)
-    import surface_distance as surfdist
-    # ... 省略实现细节
+   
 
 def so(mask_pred, mask_gt):
     # 计算表面重叠率(SO)
-    import surface_distance as surfdist
-    # ... 省略实现细节
+    
 
 def sd(mask_pred, mask_gt):
     # 计算表面Dice系数(SD)
-    import surface_distance as surfdist
-    # ... 省略实现细节
+    
 ```
 
 ### 2. 对比实验设置
