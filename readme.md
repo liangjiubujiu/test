@@ -181,6 +181,28 @@ def sd(mask_pred, mask_gt):
 3. 将模型实现文件（如`TransBTS.py`）放入`medzoo/`目录
 
 
+支持在U型结构中替换不同Attention模块，配置步骤：
+ 
+1. 选择基础U型架构  
+   - 从现有模型中选取轻量级U型网络（如`Unet3DMINI`），或通过修改`3DUNet.py`减少网络深度（例如将编码层数从5层简化为3层），构建基础骨架。  
+
+2. 优化编码器结构（可选）  
+   - 在编码器（Encoder）的卷积块中引入残差连接（Residual Structure），增强特征传递能力。例如，将传统的`Conv3D+BN+ReLU`模块替换为残差模块：  
+
+3. 在瓶颈层（Bottleneck）接入Attention模块 
+   - 核心原则：多数论文中的Attention模块（如SE、CBAM、Non-Local等）具有即插即用特性，可直接迁移至3D网络。以`External Attention`为例（参考仓库：[xmu-xiaoma666/External-Attention-pytorch](https://github.com/xmu-xiaoma666/External-Attention-pytorch)）：  
+     1. 在`medzoo`目录下添加Attention模块实现文件（如`attention3d.py`）；  
+     2. 在Bottleneck层中导入并调用Attention模块
+ 
+4. 新手参考路径
+   - 初次尝试时，可先研读`medzoo`中已实现的Attention接入方式，理解3D特征图的维度适配（如`(B, C, D, H, W)`）后，再替换为目标模块。  
+
+
+推荐资源与注意事项：  
+- **参考仓库**：[External-Attention-pytorch](https://github.com/xmu-xiaoma666/External-Attention-pytorch)。  
+- **维度适配**：3D Attention需注意卷积核维度（如`3×3×3`）和特征图维度（添加`dim=3`参数）。  
+- **轻量化设计**：牙齿分割场景中，建议优先使用轻量级Attention，避免因参数量过大导致过拟合。
+
 ### 3. 前后处理注意事项
 分块大小、重叠率以及重叠部分的协议机制对3D结构重建和后续性能评估有显著影响，在训练前请参考如下tips：
 - 尽可能用更多更大memory的GPU训练模型，减少分块带来的边界效应，这种噪声影响在CBCT数据上尤为敏感，外部易感知到性能不稳定，或者实验结果的不易复制。
