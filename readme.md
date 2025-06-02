@@ -210,41 +210,41 @@ def sd(mask_pred, mask_gt):
 ```
 
 ### 2. 对比实验设置
-支持扩展新模型，配置步骤：
+最近几年基于Transformer的算法被逐渐应用到视觉任务上，ctooth中提出的框架目前支持注册基于attention或Transformer的模型，自定义模型的配置步骤：
 
-1. 在`train_cbct.py`的参数列表中添加模型名称：
+1. 在`train_cbct.py`的参数列表中添加OurNewModel模型名称：
    ```python
-   parser.add_argument('--model', type=str, default='UNet3D', choices=['UNet3D', 'TransBTS', ...])
+   parser.add_argument('--model', type=str, default='OurNewModel', choices=['UNet3D', 'OurNewModel', ...])
    ```
 
 2. 在`medzoo/__init__.py`中注册新模型：
    ```python
-   model_list = ['UNet3D', 'TransBTS', ...]
-
+   from .OurNewModel import OurNewModel
+   model_list = ['UNet3D', 'OurNewModel', ...]
    def create_model(args):
        # ... 其他模型定义
-       elif model_name == 'TransBTS':
-           _, model = TransBTS(args, dataset='brats', _conv_repr=True, _pe_type="learned")
+       elif model_name == 'OurNewModel':
+           model = OurNewModel()
    ```
 
-3. 将模型实现文件（如`TransBTS.py`）放入`medzoo/`目录
+3. 将模型实现文件（如`NewModel.py`）放入`medzoo/`目录
 
 
-支持在U型结构中替换不同Attention模块，配置步骤：
+除此之外，有的朋友希望能够复现我们在论文中提出的轻量级U型网络以及尝试其扩展方法，本框架已经集成相关的配件，支持在U型结构中替换不同Attention模块，配置步骤：
  
 1. 选择基础U型架构  
-   - 从现有模型中选取轻量级U型网络（如`Unet3DMINI`），或通过修改`3DUNet.py`减少网络深度（例如将编码层数从5层简化为3层），构建基础骨架。  
+   - 从现有模型中选取轻量级U型网络（如`OurBaseModel.py`），或通过修改`3DUNet.py`减少网络深度，构建基础骨架。
 
 2. 优化编码器结构（可选）  
-   - 在编码器（Encoder）的卷积块中引入残差连接（Residual Structure），增强特征传递能力。例如，将传统的`Conv3D+BN+ReLU`模块替换为残差模块：  
+   - 在编码器（Encoder）的卷积块中引入残差连接，增强特征传递能力。例如，将传统的`Conv3D+BN+ReLU`模块替换为残差模块。  
 
-3. 在瓶颈层（Bottleneck）接入Attention模块 
+3. 在瓶颈层接入Attention模块（可选） 
    - 核心原则：多数论文中的Attention模块（如SE、CBAM、Non-Local等）具有即插即用特性，可直接迁移至3D网络。以`External Attention`为例（参考仓库：[xmu-xiaoma666/External-Attention-pytorch](https://github.com/xmu-xiaoma666/External-Attention-pytorch)）：  
-     1. 在`medzoo`目录下添加Attention模块实现文件（如`attention3d.py`）；  
-     2. 在Bottleneck层中导入并调用Attention模块
+     1. 在`medzoo`目录下添加Attention模块实现文件（适配3D网络的attention根据上述`External Attention`以及官方或者在github上开源的第三方仓库复制或者变形，涵盖17种，汇总在`attention3s.py`，非常感谢一众大佬的开源！使得我有机会尝试将这些工作补充集成到该框架中）。 
+     2. 在Bottleneck层中导入并调用Attention模块。参考`OurNewAttentionModel.py`，在训练之前，需要参考自定义模型的配置步骤2进行模型注册。
  
 4. 新手参考路径
-   - 初次尝试时，可先研读`medzoo`中已实现的Attention接入方式，理解3D特征图的维度适配（如`(B, C, D, H, W)`）后，再替换为目标模块。  
+   - 初次尝试时，可先研读`medzoo`中已实现的3DAttention工具包，理解3D特征图的维度适配（如`(B, C, D, H, W)`）后，再替换为自己中意的模块。  
 
 
 推荐资源与注意事项：  
@@ -257,9 +257,10 @@ def sd(mask_pred, mask_gt):
 - 尽可能用更多更大memory的GPU训练模型，减少分块带来的边界效应，这种噪声影响在CBCT数据上尤为敏感，外部易感知到性能不稳定，或者实验结果的不易复制。
 - 水平/垂直/深度方向重叠率：这个超参数在二维图像上易缓解边界效应，尤其是在重叠率增大的情况下，然而，对于3D CBCT图像中的牙齿目标，特别是牙根小目标区域，这种重叠可能在一些样本中会加重边界效应，因此针对不同实验条件，需要谨慎调参。
 - 分块volume水平/垂直/深度分辨率：这个超参数会一定程度上影响分割性能，根据经验值，在硬件设备支持的情况下，分辨率设置的较高，生成的分割结果会越连续。
-- 通过patch重建3D结构代码如下，默认使用二值化，可优化为更加柔和的手段，例如“少数服从多数”投票的方式，减少孤立噪声点和牙齿预测结果的不连续性。
-```python
-- for i in range(x.shape[0]):
+- 噪声水平：本实验在预处理中，使用加性高斯噪声与灰度归一化后的图像数据进行叠加，以增强分割结果的抗噪性能，因此，噪声的均值和方差也是一个重要的参数，推荐根据经验值设置。
+- 后处理：通过patch重建3D结构代码如下，默认使用二值化，推荐后续感兴趣的研究者将其优化为更加柔和的手段，例如“少数服从多数”投票的方式，减少孤立噪声点和牙齿预测结果的不连续性。
+```python 
+  for i in range(x.shape[0]):
 
                 img = x[i]
                 img[img != 0] = 255
@@ -286,7 +287,7 @@ ctooth_segmentation/
 │   │   └── cbct_utils.py  # 辅助工具函数
 │   ├── medzoo/            # 模型定义
 │   │   ├── __init__.py    # 模型注册表
-│   │   ├── UNet3D.py      # 3D U-Net实现
+│   │   ├── UNet3D.py      # 3D分割模型实现
 │   │   └── ...
 │   ├── losses3D/          # 损失函数
 │   │   ├── dice.py        # Dice损失
