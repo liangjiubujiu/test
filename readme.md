@@ -227,7 +227,7 @@ def sd(mask_pred, mask_gt):
            model = OurNewModel()
    ```
 
-3. 将模型实现文件（如`NewModel.py`）放入`medzoo/`目录
+3. 将模型实现文件（如`OurNewModel.py`）放入`medzoo/`目录
 
 
 除此之外，有的朋友希望能够复现我们在论文中提出的轻量级U型网络以及尝试其扩展方法，本框架已经集成相关的配件，支持在U型结构中替换不同Attention模块，配置步骤：
