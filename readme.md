@@ -249,7 +249,7 @@ def sd(mask_pred, mask_gt):
 
 推荐资源与注意事项：  
 - **参考仓库**：[External-Attention-pytorch](https://github.com/xmu-xiaoma666/External-Attention-pytorch)。  
-- **维度适配**：3D Attention需注意卷积核维度（如`3×3×3`）和特征图维度（添加`dim=3`参数）。  
+- **维度适配**：3D Attention需注意卷积核维度（如`3×3×3`）和特征图维度。  
 - **轻量化设计**：牙齿分割场景中，建议优先使用轻量级Attention，避免因参数量过大导致过拟合。
 
 ### 3. 前后处理注意事项
