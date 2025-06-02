@@ -211,7 +211,7 @@ def sd(mask_pred, mask_gt):
 ```
 
 ### 2. 对比实验设置
-最近几年基于Transformer的算法被逐渐应用到视觉任务上，ctooth中提出的框架目前支持注册基于attention或Transformer的模型，自定义模型的配置步骤：
+最近几年基于Transformer的算法被逐渐应用到视觉任务上，本仓库中提出的框架目前支持注册基于attention或Transformer的模型，自定义模型的配置步骤：
 
 1. 在`train_cbct.py`的参数列表中添加OurNewModel模型名称：
    ```python
@@ -280,7 +280,7 @@ def sd(mask_pred, mask_gt):
 本项目基于开源框架medzoo开发，代码结构如下：
 
 ```
-ctooth_segmentation/
+├benchmark/
 ├── datasets/              # 数据集存放目录
 ├── lib/                   # 核心代码库
 │   ├── medloaders/        # 数据加载与预处理
